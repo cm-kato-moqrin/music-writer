@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>16分グリッドエディタ - Music Writer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 30px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00d4ff;
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+    h2 {
+      color: #888;
+      font-size: 1.2rem;
+      font-weight: normal;
+      margin-bottom: 30px;
+    }
+    .section {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 25px;
+    }
+    .section-title {
+      color: #00d4ff;
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .control-group label {
+      font-size: 1rem;
+      color: #888;
+    }
+    select, input {
+      background: #0f3460;
+      border: 1px solid #00d4ff;
+      color: #eee;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    button {
+      background: #00d4ff;
+      color: #1a1a2e;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    button:hover {
+      background: #00a8cc;
+    }
+    button.secondary {
+      background: #0f3460;
+      color: #00d4ff;
+      border: 1px solid #00d4ff;
+    }
+    button.secondary:hover {
+      background: #1a4a7a;
+    }
+
+    /* Grid Editor */
+    .grid-container {
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+    .grid-header {
+      display: flex;
+      margin-bottom: 8px;
+    }
+    .grid-header-cell {
+      width: 55px;
+      text-align: center;
+      font-size: 1rem;
+      color: #888;
+    }
+    .grid-header-cell.beat {
+      color: #00d4ff;
+      font-weight: bold;
+    }
+    .grid-label {
+      width: 100px;
+      min-width: 100px;
+      text-align: right;
+      padding-right: 15px;
+      font-size: 1rem;
+      color: #00d4ff;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .grid-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .grid-cell {
+      width: 55px;
+      height: 55px;
+      border: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.1s;
+      position: relative;
+    }
+    .grid-cell:hover {
+      border-color: #00d4ff;
+      background: rgba(0, 212, 255, 0.1);
+    }
+    .grid-cell.active {
+      background: #00d4ff;
+      color: #1a1a2e;
+      font-weight: bold;
+    }
+    .grid-cell.beat-start {
+      border-left: 3px solid #555;
+    }
+    .grid-cell.bar-start {
+      border-left: 3px solid #00d4ff;
+    }
+
+    /* Bass specific */
+    .bass-grid .grid-cell.active {
+      background: #4ade80;
+    }
+    .bass-grid .grid-cell.ghost {
+      background: #6b7280;
+      color: #fff;
+    }
+    .bass-grid .grid-cell.chord {
+      background: #8b5cf6;
+      color: #fff;
+      font-size: 0.8rem;
+    }
+
+    /* Guitar specific */
+    .guitar-grid .grid-cell.active {
+      background: #22d3ee;
+      color: #1a1a2e;
+    }
+    .guitar-grid .grid-cell.chord {
+      background: #f97316;
+      color: #fff;
+      font-size: 0.8rem;
+    }
+    .guitar-grid .grid-cell.voicing {
+      background: #8b5cf6;
+      color: #fff;
+      font-size: 0.8rem;
+    }
+    .guitar-grid .grid-cell.mute {
+      background: #6b7280;
+      color: #fff;
+    }
+
+    /* Drum specific colors */
+    .drum-grid .grid-cell.active.hh-close {
+      background: #fbbf24;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.hh-open {
+      background: #f59e0b;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.hh-foot {
+      background: #d97706;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.sd {
+      background: #f87171;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.sd-ghost {
+      background: #991b1b;
+      color: #fff;
+    }
+    .drum-grid .grid-cell.active.bd {
+      background: #60a5fa;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.tom {
+      background: #a78bfa;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.crash {
+      background: #fb7185;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.ride {
+      background: #34d399;
+      color: #1a1a2e;
+    }
+    .drum-grid .grid-cell.active.multi {
+      background: linear-gradient(135deg, #fbbf24 50%, #60a5fa 50%);
+      color: #1a1a2e;
+    }
+
+    /* Output */
+    .output-area {
+      background: #0f3460;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 25px;
+      white-space: pre;
+      overflow-x: auto;
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+    .copy-btn {
+      margin-top: 15px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 15px 30px;
+      background: #0f3460;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      font-family: inherit;
+      font-size: 1.1rem;
+    }
+    .tab.active {
+      background: #16213e;
+      color: #00d4ff;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background: #16213e;
+      padding: 30px;
+      border-radius: 12px;
+      min-width: 450px;
+      max-width: 90vw;
+    }
+    .modal-title {
+      margin-bottom: 20px;
+      color: #00d4ff;
+      font-size: 1.3rem;
+    }
+    .note-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .note-btn {
+      padding: 18px;
+      font-size: 1.1rem;
+    }
+    .note-btn.sharp {
+      background: #0f3460;
+      color: #fbbf24;
+      border: 1px solid #fbbf24;
+    }
+    .note-btn.ghost {
+      background: #6b7280;
+      color: #fff;
+    }
+    .special-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #333;
+    }
+    .chord-input {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #333;
+    }
+    .chord-input input {
+      flex: 1;
+    }
+
+    /* Drum modal */
+    .drum-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .drum-btn {
+      padding: 15px;
+      font-size: 1rem;
+      text-align: center;
+    }
+    .drum-btn.hh { background: #fbbf24; color: #1a1a2e; }
+    .drum-btn.sd { background: #f87171; color: #1a1a2e; }
+    .drum-btn.bd { background: #60a5fa; color: #1a1a2e; }
+    .drum-btn.tom { background: #a78bfa; color: #1a1a2e; }
+    .drum-btn.cymbal { background: #fb7185; color: #1a1a2e; }
+    .drum-btn.ghost { background: #6b7280; color: #fff; }
+
+    /* Info section */
+    .info {
+      font-size: 1rem;
+      color: #888;
+      margin-top: 15px;
+      margin-bottom: 20px;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>16分グリッドエディタ</h1>
+  <h2>Music Writer - ベースライン & ドラムパターン作成ツール</h2>
+
+  <!-- Settings -->
+  <div class="section">
+    <div class="section-title">設定</div>
+    <div class="controls">
+      <div class="control-group">
+        <label>小節数</label>
+        <input type="number" id="bars" value="2" min="1" max="32" style="width: 80px;">
+      </div>
+      <div class="control-group">
+        <label>キー</label>
+        <select id="key">
+          <option value="不明">不明</option>
+          <option value="C">C</option>
+          <option value="G">G</option>
+          <option value="D">D</option>
+          <option value="A">A</option>
+          <option value="E">E</option>
+          <option value="B">B</option>
+          <option value="F">F</option>
+          <option value="Bb">Bb</option>
+          <option value="Eb">Eb</option>
+          <option value="Ab">Ab</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>BPM</label>
+        <input type="number" id="bpm" value="100" min="40" max="240" style="width: 100px;">
+      </div>
+      <div class="control-group" style="justify-content: flex-end;">
+        <button onclick="initGrids()">グリッド更新</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('bass')">ベース</button>
+    <button class="tab" onclick="showTab('guitar')">ギター</button>
+    <button class="tab" onclick="showTab('drum')">ドラム</button>
+    <button class="tab" onclick="showTab('output')">出力</button>
+  </div>
+
+  <!-- Bass Tab -->
+  <div id="bass-tab" class="tab-content active">
+    <div class="section bass-grid">
+      <div class="section-title">ベースライン</div>
+      <div class="info">セルをクリックして音を入力。もう一度クリックで編集/削除。</div>
+      <div class="grid-container" id="bass-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #4ade80;"></div>通常音</div>
+        <div class="legend-item"><div class="legend-color" style="background: #6b7280;"></div>ゴーストノート</div>
+        <div class="legend-item"><div class="legend-color" style="background: #8b5cf6;"></div>和音</div>
+      </div>
+      <div style="margin-top: 20px;">
+        <button class="secondary" onclick="clearBass()">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guitar Tab -->
+  <div id="guitar-tab" class="tab-content">
+    <div class="section guitar-grid">
+      <div class="section-title">ギター</div>
+      <div class="info">セルをクリックしてコード名または音名を入力。</div>
+      <div class="grid-container" id="guitar-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #f97316;"></div>コード名</div>
+        <div class="legend-item"><div class="legend-color" style="background: #8b5cf6;"></div>和音</div>
+        <div class="legend-item"><div class="legend-color" style="background: #22d3ee;"></div>単音</div>
+        <div class="legend-item"><div class="legend-color" style="background: #6b7280;"></div>ミュート</div>
+      </div>
+      <div style="margin-top: 20px;">
+        <button class="secondary" onclick="clearGuitar()">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drum Tab -->
+  <div id="drum-tab" class="tab-content">
+    <div class="section drum-grid">
+      <div class="section-title">ドラムパターン</div>
+      <div class="info">セルをクリックして楽器を選択。</div>
+      <div class="grid-container" id="drum-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #fbbf24;"></div>HH Close</div>
+        <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div>HH Open</div>
+        <div class="legend-item"><div class="legend-color" style="background: #f87171;"></div>Snare</div>
+        <div class="legend-item"><div class="legend-color" style="background: #991b1b;"></div>Ghost</div>
+        <div class="legend-item"><div class="legend-color" style="background: #60a5fa;"></div>Kick</div>
+        <div class="legend-item"><div class="legend-color" style="background: #a78bfa;"></div>Toms</div>
+        <div class="legend-item"><div class="legend-color" style="background: #fb7185;"></div>Crash</div>
+        <div class="legend-item"><div class="legend-color" style="background: #34d399;"></div>Ride</div>
+      </div>
+      <div style="margin-top: 20px;">
+        <button class="secondary" onclick="clearDrums()">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output Tab -->
+  <div id="output-tab" class="tab-content">
+    <div class="section">
+      <div class="section-title">テキスト出力</div>
+      <div class="info">以下をコピーしてClaudeに共有できます</div>
+      <div class="output-area" id="output"></div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button onclick="copyOutput()">クリップボードにコピー</button>
+        <button class="secondary" onclick="clearAll()">全てクリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bass Note Modal -->
+  <div class="modal" id="bass-modal">
+    <div class="modal-content">
+      <div class="modal-title">ベース音を選択</div>
+      <div class="info" style="margin-bottom: 15px; font-size: 0.9rem;">
+        開放弦: 4弦=E1, 3弦=A1, 2弦=D2, 1弦=G2
+      </div>
+
+      <div style="margin-bottom: 10px; color: #888;">音名を選択</div>
+      <div class="note-buttons">
+        <button class="note-btn" onclick="selectBassNote('C')">C</button>
+        <button class="note-btn sharp" onclick="selectBassNote('C#')">C#</button>
+        <button class="note-btn" onclick="selectBassNote('D')">D</button>
+        <button class="note-btn sharp" onclick="selectBassNote('D#')">D#</button>
+        <button class="note-btn" onclick="selectBassNote('E')">E</button>
+        <button class="note-btn" onclick="selectBassNote('F')">F</button>
+        <button class="note-btn sharp" onclick="selectBassNote('F#')">F#</button>
+        <button class="note-btn" onclick="selectBassNote('G')">G</button>
+        <button class="note-btn sharp" onclick="selectBassNote('G#')">G#</button>
+        <button class="note-btn" onclick="selectBassNote('A')">A</button>
+        <button class="note-btn sharp" onclick="selectBassNote('A#')">A#</button>
+        <button class="note-btn" onclick="selectBassNote('B')">B</button>
+      </div>
+
+      <div id="bass-octave-section" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+        <div style="margin-bottom: 10px; color: #888;">オクターブを選択: <span id="bass-selected-note" style="color: #4ade80;"></span></div>
+        <div style="display: flex; gap: 10px;">
+          <button class="note-btn" onclick="setBassOctave(1)">1 (低)</button>
+          <button class="note-btn" onclick="setBassOctave(2)">2</button>
+          <button class="note-btn" onclick="setBassOctave(3)">3</button>
+          <button class="note-btn" onclick="setBassOctave(4)">4 (高)</button>
+        </div>
+      </div>
+
+      <div class="special-buttons">
+        <button class="note-btn ghost" onclick="setBassNote('g')">ゴースト (g)</button>
+        <button class="note-btn" onclick="setBassNote('.')">休符 (.)</button>
+      </div>
+      <div class="chord-input">
+        <label>和音:</label>
+        <input type="text" id="chord-input" placeholder="例: E1+B1, C2+G2">
+        <button onclick="setChord()">入力</button>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="secondary" onclick="closeModal('bass-modal')">キャンセル</button>
+        <button class="secondary" onclick="clearBassCell()">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guitar Modal -->
+  <div class="modal" id="guitar-modal">
+    <div class="modal-content">
+      <div class="modal-title">ギター入力</div>
+      <div class="info" style="margin-bottom: 15px; font-size: 0.9rem;">
+        開放弦: 6弦=E2, 5弦=A2, 4弦=D3, 3弦=G3, 2弦=B3, 1弦=E4
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 10px; color: #888;">コード（よく使うもの）</div>
+        <div class="note-buttons" style="grid-template-columns: repeat(5, 1fr);">
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('C')">C</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('G')">G</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('Am')">Am</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('F')">F</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('Em')">Em</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('Dm')">Dm</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('E')">E</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('A')">A</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('D')">D</button>
+          <button class="note-btn" style="background: #f97316;" onclick="setGuitarNote('Bm')">Bm</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 15px; padding-top: 15px; border-top: 1px solid #333;">
+        <div style="margin-bottom: 10px; color: #888;">単音（アルペジオ/リフ用）</div>
+        <div class="note-buttons">
+          <button class="note-btn" onclick="selectGuitarNote('C')">C</button>
+          <button class="note-btn sharp" onclick="selectGuitarNote('C#')">C#</button>
+          <button class="note-btn" onclick="selectGuitarNote('D')">D</button>
+          <button class="note-btn sharp" onclick="selectGuitarNote('D#')">D#</button>
+          <button class="note-btn" onclick="selectGuitarNote('E')">E</button>
+          <button class="note-btn" onclick="selectGuitarNote('F')">F</button>
+          <button class="note-btn sharp" onclick="selectGuitarNote('F#')">F#</button>
+          <button class="note-btn" onclick="selectGuitarNote('G')">G</button>
+          <button class="note-btn sharp" onclick="selectGuitarNote('G#')">G#</button>
+          <button class="note-btn" onclick="selectGuitarNote('A')">A</button>
+          <button class="note-btn sharp" onclick="selectGuitarNote('A#')">A#</button>
+          <button class="note-btn" onclick="selectGuitarNote('B')">B</button>
+        </div>
+      </div>
+
+      <div id="guitar-octave-section" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+        <div style="margin-bottom: 10px; color: #888;">オクターブを選択: <span id="guitar-selected-note" style="color: #22d3ee;"></span></div>
+        <div style="display: flex; gap: 10px;">
+          <button class="note-btn" onclick="setGuitarOctave(2)">2 (低)</button>
+          <button class="note-btn" onclick="setGuitarOctave(3)">3</button>
+          <button class="note-btn" onclick="setGuitarOctave(4)">4</button>
+          <button class="note-btn" onclick="setGuitarOctave(5)">5 (高)</button>
+        </div>
+      </div>
+
+      <div class="chord-input">
+        <label>和音:</label>
+        <input type="text" id="guitar-voicing-input" placeholder="例: E2+G3+B3, C3+E3+G3">
+        <button onclick="setGuitarVoicing()">入力</button>
+      </div>
+
+      <div class="chord-input">
+        <label>コード名:</label>
+        <input type="text" id="guitar-chord-input" placeholder="例: Am7, Cmaj7, Dsus4">
+        <button onclick="setGuitarCustom()">入力</button>
+      </div>
+
+      <div class="special-buttons">
+        <button class="note-btn" style="background: #6b7280;" onclick="setGuitarNote('x')">ミュート (x)</button>
+        <button class="note-btn" onclick="setGuitarNote('.')">休符 (.)</button>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="secondary" onclick="closeModal('guitar-modal')">キャンセル</button>
+        <button class="secondary" onclick="clearGuitarCell()">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drum Modal -->
+  <div class="modal" id="drum-modal">
+    <div class="modal-content">
+      <div class="modal-title">ドラム音を選択</div>
+
+      <div style="margin-bottom: 10px; color: #888;">ハイハット</div>
+      <div class="drum-options">
+        <button class="drum-btn hh" onclick="setDrumNote('x')">Close (x)</button>
+        <button class="drum-btn hh" onclick="setDrumNote('X')">Open (X)</button>
+        <button class="drum-btn hh" onclick="setDrumNote('f')">Foot (f)</button>
+      </div>
+
+      <div style="margin-bottom: 10px; color: #888;">スネア</div>
+      <div class="drum-options">
+        <button class="drum-btn sd" onclick="setDrumNote('o')">Hit (o)</button>
+        <button class="drum-btn ghost" onclick="setDrumNote('g')">Ghost (g)</button>
+        <button class="drum-btn sd" onclick="setDrumNote('r')">Rim (r)</button>
+      </div>
+
+      <div style="margin-bottom: 10px; color: #888;">キック</div>
+      <div class="drum-options">
+        <button class="drum-btn bd" onclick="setDrumNote('k')">Kick (k)</button>
+      </div>
+
+      <div style="margin-bottom: 10px; color: #888;">タム</div>
+      <div class="drum-options">
+        <button class="drum-btn tom" onclick="setDrumNote('H')">High (H)</button>
+        <button class="drum-btn tom" onclick="setDrumNote('M')">Mid (M)</button>
+        <button class="drum-btn tom" onclick="setDrumNote('L')">Low (L)</button>
+        <button class="drum-btn tom" onclick="setDrumNote('F')">Floor (F)</button>
+      </div>
+
+      <div style="margin-bottom: 10px; color: #888;">シンバル</div>
+      <div class="drum-options">
+        <button class="drum-btn cymbal" onclick="setDrumNote('c')">Crash (c)</button>
+        <button class="drum-btn" style="background: #34d399; color: #1a1a2e;" onclick="setDrumNote('R')">Ride (R)</button>
+      </div>
+
+      <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #333;">
+        <div style="margin-bottom: 10px; color: #888;">現在の音: <span id="current-drum-display" style="color: #00d4ff;">なし</span></div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button onclick="setDrumNote('.')">クリア</button>
+          <button class="secondary" onclick="closeModal('drum-modal')">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let bars = 2;
+    let bassData = [];
+    let guitarData = [];
+    let drumData = [];
+    let currentBassCell = null;
+    let currentGuitarCell = null;
+    let currentDrumCell = null;
+    let selectedBassNote = null;
+    let selectedGuitarNote = null;
+
+    const beatLabels = ['1', 'e', '+', 'a', '2', 'e', '+', 'a', '3', 'e', '+', 'a', '4', 'e', '+', 'a'];
+
+    // Drum display config
+    const drumConfig = {
+      'x': { class: 'hh-close', display: 'x' },
+      'X': { class: 'hh-open', display: 'X' },
+      'f': { class: 'hh-foot', display: 'f' },
+      'o': { class: 'sd', display: 'o' },
+      'g': { class: 'sd-ghost', display: 'g' },
+      'r': { class: 'sd', display: 'r' },
+      'k': { class: 'bd', display: 'k' },
+      'H': { class: 'tom', display: 'H' },
+      'M': { class: 'tom', display: 'M' },
+      'L': { class: 'tom', display: 'L' },
+      'F': { class: 'tom', display: 'F' },
+      'c': { class: 'crash', display: 'c' },
+      'R': { class: 'ride', display: 'R' },
+    };
+
+    // Initialize
+    function initGrids() {
+      bars = parseInt(document.getElementById('bars').value);
+      const totalCells = bars * 16;
+
+      bassData = new Array(totalCells).fill('.');
+      guitarData = new Array(totalCells).fill('.');
+      drumData = new Array(totalCells).fill('.');
+
+      renderBassGrid();
+      renderGuitarGrid();
+      renderDrumGrid();
+      updateOutput();
+    }
+
+    // Render bass grid
+    function renderBassGrid() {
+      const container = document.getElementById('bass-grid');
+      const barsPerRow = 4;
+      const totalRows = Math.ceil(bars / barsPerRow);
+      let html = '';
+
+      for (let row = 0; row < totalRows; row++) {
+        const startBar = row * barsPerRow;
+        const endBar = Math.min(startBar + barsPerRow, bars);
+        const barsInThisRow = endBar - startBar;
+
+        // Row label
+        if (totalRows > 1) {
+          html += `<div style="color: #888; margin: 15px 0 5px 100px; font-size: 0.9rem;">${startBar + 1}〜${endBar}小節目</div>`;
+        }
+
+        // Header
+        html += '<div class="grid-header"><div class="grid-label"></div>';
+        for (let bar = 0; bar < barsInThisRow; bar++) {
+          for (let i = 0; i < 16; i++) {
+            const isBeat = i % 4 === 0;
+            const label = beatLabels[i];
+            html += `<div class="grid-header-cell ${isBeat ? 'beat' : ''}">${label}</div>`;
+          }
+        }
+        html += '</div>';
+
+        // Bass row
+        html += '<div class="grid-row"><div class="grid-label">Bass</div>';
+        for (let bar = startBar; bar < endBar; bar++) {
+          for (let beat = 0; beat < 16; beat++) {
+            const i = bar * 16 + beat;
+            const isBeatStart = beat % 4 === 0;
+            const isBarStart = beat === 0;
+            const note = bassData[i];
+            const isActive = note !== '.';
+            const isGhost = note === 'g';
+            const isChord = note.includes('+');
+
+            let cellClass = 'grid-cell';
+            if (isBarStart) cellClass += ' bar-start';
+            else if (isBeatStart) cellClass += ' beat-start';
+            if (isActive) cellClass += ' active';
+            if (isGhost) cellClass += ' ghost';
+            if (isChord) cellClass += ' chord';
+
+            html += `<div class="${cellClass}" onclick="editBassCell(${i})">${note}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Render guitar grid
+    function renderGuitarGrid() {
+      const container = document.getElementById('guitar-grid');
+      const barsPerRow = 4;
+      const totalRows = Math.ceil(bars / barsPerRow);
+      let html = '';
+
+      // Check note type
+      const isVoicing = (note) => note.includes('+');  // 和音: E+G+B
+      const isSingle = (note) => note.startsWith('♪'); // 単音: ♪C
+      const isChord = (note) => {
+        if (note === '.' || note === 'x' || isVoicing(note) || isSingle(note)) return false;
+        return note.length > 1;  // コード名: Am, G7, etc.
+      };
+
+      for (let row = 0; row < totalRows; row++) {
+        const startBar = row * barsPerRow;
+        const endBar = Math.min(startBar + barsPerRow, bars);
+        const barsInThisRow = endBar - startBar;
+
+        // Row label
+        if (totalRows > 1) {
+          html += `<div style="color: #888; margin: 15px 0 5px 100px; font-size: 0.9rem;">${startBar + 1}〜${endBar}小節目</div>`;
+        }
+
+        // Header
+        html += '<div class="grid-header"><div class="grid-label"></div>';
+        for (let bar = 0; bar < barsInThisRow; bar++) {
+          for (let i = 0; i < 16; i++) {
+            const isBeat = i % 4 === 0;
+            const label = beatLabels[i];
+            html += `<div class="grid-header-cell ${isBeat ? 'beat' : ''}">${label}</div>`;
+          }
+        }
+        html += '</div>';
+
+        // Guitar row
+        html += '<div class="grid-row"><div class="grid-label">Guitar</div>';
+        for (let bar = startBar; bar < endBar; bar++) {
+          for (let beat = 0; beat < 16; beat++) {
+            const i = bar * 16 + beat;
+            const isBeatStart = beat % 4 === 0;
+            const isBarStart = beat === 0;
+            const note = guitarData[i];
+            const isActive = note !== '.';
+            const isMute = note === 'x';
+            const noteIsVoicing = isVoicing(note);
+            const noteIsChord = isChord(note);
+
+            let cellClass = 'grid-cell';
+            if (isBarStart) cellClass += ' bar-start';
+            else if (isBeatStart) cellClass += ' beat-start';
+            if (isActive) cellClass += ' active';
+            if (isMute) cellClass += ' mute';
+            if (noteIsVoicing) cellClass += ' voicing';
+            else if (noteIsChord) cellClass += ' chord';
+
+            const display = note.length > 3 ? note.substring(0, 3) : note;
+            html += `<div class="${cellClass}" onclick="editGuitarCell(${i})">${display}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Render drum grid
+    function renderDrumGrid() {
+      const container = document.getElementById('drum-grid');
+      const barsPerRow = 4;
+      const totalRows = Math.ceil(bars / barsPerRow);
+      let html = '';
+
+      for (let row = 0; row < totalRows; row++) {
+        const startBar = row * barsPerRow;
+        const endBar = Math.min(startBar + barsPerRow, bars);
+        const barsInThisRow = endBar - startBar;
+
+        // Row label
+        if (totalRows > 1) {
+          html += `<div style="color: #888; margin: 15px 0 5px 100px; font-size: 0.9rem;">${startBar + 1}〜${endBar}小節目</div>`;
+        }
+
+        // Header
+        html += '<div class="grid-header"><div class="grid-label"></div>';
+        for (let bar = 0; bar < barsInThisRow; bar++) {
+          for (let i = 0; i < 16; i++) {
+            const isBeat = i % 4 === 0;
+            const label = beatLabels[i];
+            html += `<div class="grid-header-cell ${isBeat ? 'beat' : ''}">${label}</div>`;
+          }
+        }
+        html += '</div>';
+
+        // Drum row
+        html += '<div class="grid-row"><div class="grid-label">Drums</div>';
+        for (let bar = startBar; bar < endBar; bar++) {
+          for (let beat = 0; beat < 16; beat++) {
+            const i = bar * 16 + beat;
+            const isBeatStart = beat % 4 === 0;
+            const isBarStart = beat === 0;
+            const note = drumData[i];
+            const isMulti = note.includes('+');
+
+            let cellClass = 'grid-cell';
+            if (isBarStart) cellClass += ' bar-start';
+            else if (isBeatStart) cellClass += ' beat-start';
+
+            if (note !== '.') {
+              if (isMulti) {
+                cellClass += ' active multi';
+              } else {
+                const config = drumConfig[note];
+                if (config) cellClass += ' active ' + config.class;
+              }
+            }
+
+            const display = note === '.' ? '.' : (isMulti ? note.split('+').join('') : note);
+            html += `<div class="${cellClass}" onclick="editDrumCell(${i})">${display}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Edit bass cell
+    function editBassCell(index) {
+      currentBassCell = index;
+      selectedBassNote = null;
+      document.getElementById('chord-input').value = '';
+      document.getElementById('bass-octave-section').style.display = 'none';
+      document.getElementById('bass-modal').classList.add('show');
+    }
+
+    // Select bass note (show octave selection)
+    function selectBassNote(note) {
+      selectedBassNote = note;
+      document.getElementById('bass-selected-note').textContent = note;
+      document.getElementById('bass-octave-section').style.display = 'block';
+    }
+
+    // Set bass octave
+    function setBassOctave(octave) {
+      if (currentBassCell !== null && selectedBassNote !== null) {
+        bassData[currentBassCell] = selectedBassNote + octave;
+        renderBassGrid();
+        updateOutput();
+      }
+      closeModal('bass-modal');
+    }
+
+    // Set bass note (direct, for ghost/rest)
+    function setBassNote(note) {
+      if (currentBassCell !== null) {
+        bassData[currentBassCell] = note;
+        renderBassGrid();
+        updateOutput();
+      }
+      closeModal('bass-modal');
+    }
+
+    // Set chord
+    function setChord() {
+      const input = document.getElementById('chord-input').value.trim();
+      if (input && currentBassCell !== null) {
+        bassData[currentBassCell] = input;
+        renderBassGrid();
+        updateOutput();
+      }
+      closeModal('bass-modal');
+    }
+
+    // Clear bass cell
+    function clearBassCell() {
+      if (currentBassCell !== null) {
+        bassData[currentBassCell] = '.';
+        renderBassGrid();
+        updateOutput();
+      }
+      closeModal('bass-modal');
+    }
+
+    // Edit guitar cell
+    function editGuitarCell(index) {
+      currentGuitarCell = index;
+      selectedGuitarNote = null;
+      document.getElementById('guitar-voicing-input').value = '';
+      document.getElementById('guitar-chord-input').value = '';
+      document.getElementById('guitar-octave-section').style.display = 'none';
+      document.getElementById('guitar-modal').classList.add('show');
+    }
+
+    // Set guitar note (chord name)
+    function setGuitarNote(note) {
+      if (currentGuitarCell !== null) {
+        guitarData[currentGuitarCell] = note;
+        renderGuitarGrid();
+        updateOutput();
+      }
+      closeModal('guitar-modal');
+    }
+
+    // Select guitar note (show octave selection)
+    function selectGuitarNote(note) {
+      selectedGuitarNote = note;
+      document.getElementById('guitar-selected-note').textContent = note;
+      document.getElementById('guitar-octave-section').style.display = 'block';
+    }
+
+    // Set guitar octave
+    function setGuitarOctave(octave) {
+      if (currentGuitarCell !== null && selectedGuitarNote !== null) {
+        guitarData[currentGuitarCell] = selectedGuitarNote + octave;
+        renderGuitarGrid();
+        updateOutput();
+      }
+      closeModal('guitar-modal');
+    }
+
+    // Set guitar voicing (和音: E+G+B)
+    function setGuitarVoicing() {
+      const input = document.getElementById('guitar-voicing-input').value.trim();
+      if (input && currentGuitarCell !== null) {
+        guitarData[currentGuitarCell] = input;
+        renderGuitarGrid();
+        updateOutput();
+      }
+      closeModal('guitar-modal');
+    }
+
+    // Set guitar custom chord
+    function setGuitarCustom() {
+      const input = document.getElementById('guitar-chord-input').value.trim();
+      if (input && currentGuitarCell !== null) {
+        guitarData[currentGuitarCell] = input;
+        renderGuitarGrid();
+        updateOutput();
+      }
+      closeModal('guitar-modal');
+    }
+
+    // Clear guitar cell
+    function clearGuitarCell() {
+      if (currentGuitarCell !== null) {
+        guitarData[currentGuitarCell] = '.';
+        renderGuitarGrid();
+        updateOutput();
+      }
+      closeModal('guitar-modal');
+    }
+
+    // Clear guitar
+    function clearGuitar() {
+      guitarData = new Array(bars * 16).fill('.');
+      renderGuitarGrid();
+      updateOutput();
+    }
+
+    // Edit drum cell
+    function editDrumCell(index) {
+      currentDrumCell = index;
+      updateDrumDisplay();
+      document.getElementById('drum-modal').classList.add('show');
+    }
+
+    // Update drum display in modal
+    function updateDrumDisplay() {
+      const display = document.getElementById('current-drum-display');
+      if (currentDrumCell !== null) {
+        const current = drumData[currentDrumCell];
+        display.textContent = current === '.' ? 'なし' : current;
+      }
+    }
+
+    // Set drum note (toggle mode - add or remove)
+    function setDrumNote(note) {
+      if (currentDrumCell !== null) {
+        if (note === '.') {
+          // Clear all
+          drumData[currentDrumCell] = '.';
+        } else {
+          const current = drumData[currentDrumCell];
+          if (current === '.') {
+            // Empty cell, just set
+            drumData[currentDrumCell] = note;
+          } else if (current.includes(note)) {
+            // Remove this note
+            const notes = current.split('+').filter(n => n !== note);
+            drumData[currentDrumCell] = notes.length > 0 ? notes.join('+') : '.';
+          } else {
+            // Add note
+            drumData[currentDrumCell] = current + '+' + note;
+          }
+        }
+        renderDrumGrid();
+        updateOutput();
+        updateDrumDisplay();
+      }
+    }
+
+    // Close modal
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+      currentBassCell = null;
+      currentGuitarCell = null;
+      currentDrumCell = null;
+      selectedBassNote = null;
+      selectedGuitarNote = null;
+    }
+
+    // Clear bass
+    function clearBass() {
+      bassData = new Array(bars * 16).fill('.');
+      renderBassGrid();
+      updateOutput();
+    }
+
+    // Clear drums
+    function clearDrums() {
+      drumData = new Array(bars * 16).fill('.');
+      renderDrumGrid();
+      updateOutput();
+    }
+
+    // Clear all
+    function clearAll() {
+      if (confirm('ベース・ギター・ドラムを全てクリアしますか？')) {
+        bassData = new Array(bars * 16).fill('.');
+        guitarData = new Array(bars * 16).fill('.');
+        drumData = new Array(bars * 16).fill('.');
+        renderBassGrid();
+        renderGuitarGrid();
+        renderDrumGrid();
+        updateOutput();
+      }
+    }
+
+    // Update output
+    function updateOutput() {
+      const key = document.getElementById('key').value;
+      const bpm = document.getElementById('bpm').value;
+
+      let output = `キー：${key}\nBPM：${bpm}\n拍子：4/4\n\n`;
+
+      // Bass output
+      output += '【ベースライン】\n';
+      output += '凡例: 音名+数字=オクターブ (例: E1, A2), g=ゴースト, 音+音=和音\n';
+      output += '      開放弦: 4弦=E1, 3弦=A1, 2弦=D2, 1弦=G2\n\n';
+      for (let bar = 0; bar < bars; bar++) {
+        if (bars > 1) output += `[${bar + 1}小節目]\n`;
+        output += '|  1拍目  |  2拍目  |  3拍目  |  4拍目  |\n';
+        output += '|1 e + a |2 e + a |3 e + a |4 e + a |\n';
+
+        let bassLine = '|';
+        for (let beat = 0; beat < 4; beat++) {
+          for (let sub = 0; sub < 4; sub++) {
+            const idx = bar * 16 + beat * 4 + sub;
+            const note = bassData[idx];
+            const padded = note.length > 2 ? note.substring(0, 2) : note.padEnd(2, ' ');
+            bassLine += padded;
+          }
+          bassLine += '|';
+        }
+        output += bassLine + '\n\n';
+      }
+
+      // Guitar output
+      output += '【ギター】\n';
+      output += '凡例: コード名=ストローク, 音名+数字=単音 (例: E2, G3), 音+音=和音, x=ミュート\n';
+      output += '      開放弦: 6弦=E2, 5弦=A2, 4弦=D3, 3弦=G3, 2弦=B3, 1弦=E4\n\n';
+      for (let bar = 0; bar < bars; bar++) {
+        if (bars > 1) output += `[${bar + 1}小節目]\n`;
+        output += '|  1拍目  |  2拍目  |  3拍目  |  4拍目  |\n';
+        output += '|1 e + a |2 e + a |3 e + a |4 e + a |\n';
+
+        let guitarLine = '|';
+        for (let beat = 0; beat < 4; beat++) {
+          for (let sub = 0; sub < 4; sub++) {
+            const idx = bar * 16 + beat * 4 + sub;
+            const note = guitarData[idx];
+            const padded = note.length > 2 ? note.substring(0, 2) : note.padEnd(2, ' ');
+            guitarLine += padded;
+          }
+          guitarLine += '|';
+        }
+        output += guitarLine + '\n\n';
+      }
+
+      // Drum output
+      output += '【ドラムパターン】\n';
+      output += '凡例: x=HHクローズ, X=HHオープン, f=HHフット\n';
+      output += '      o=スネア, g=ゴースト, k=キック\n';
+      output += '      H/M/L/F=タム(High/Mid/Low/Floor), c=クラッシュ, R=ライド\n';
+      output += '      +で同時発音 (例: x+k=HH+キック)\n\n';
+
+      for (let bar = 0; bar < bars; bar++) {
+        if (bars > 1) output += `[${bar + 1}小節目]\n`;
+        output += '|1 e + a |2 e + a |3 e + a |4 e + a |\n';
+
+        let drumLine = '|';
+        for (let beat = 0; beat < 4; beat++) {
+          for (let sub = 0; sub < 4; sub++) {
+            const idx = bar * 16 + beat * 4 + sub;
+            drumLine += drumData[idx] + ' ';
+          }
+          drumLine += '|';
+        }
+        output += drumLine + '\n\n';
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    // Copy output
+    function copyOutput() {
+      const output = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(output).then(() => {
+        alert('コピーしました！');
+      });
+    }
+
+    // Tab switching
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+      document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+
+      if (tabName === 'output') {
+        updateOutput();
+      }
+    }
+
+    // Close modal on outside click
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.remove('show');
+          currentBassCell = null;
+          currentGuitarCell = null;
+          currentDrumCell = null;
+        }
+      });
+    });
+
+    // Initialize on load
+    initGrids();
+  </script>
+</body>
+</html>
